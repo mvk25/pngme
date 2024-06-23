@@ -56,11 +56,23 @@ impl Png {
     }
 
     pub fn chunk_by_type(&self, chunk_type: &str) -> Option<&Chunk> {
-        todo!()
+        let container_chunk = self.chunks.iter().filter(|x| x.chunk_type() == &ChunkType::from_str(chunk_type).unwrap()).collect::<Vec<&Chunk>>();
+        if container_chunk.len() > 0 {
+            return Some(container_chunk[0]);
+        }
+        
+        None
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {
-        todo!()
+        let chunks_vec: Vec<u8> = self.chunks.iter()
+        .flat_map(|x| x.as_bytes())
+        .collect();
+
+        self.signature.iter()
+        .chain(chunks_vec.iter())
+        .copied()
+        .collect::<Vec<u8>>()
     }
 }
 
@@ -100,7 +112,12 @@ impl TryFrom<&[u8]> for Png {
 
 impl fmt::Display for Png {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+        writeln!(f, "Signature {:?}", self.signature)?;
+        for chunk in self.chunks.iter() {
+            writeln!(f, "{}", chunk)?;
+        }
+
+        Ok(())
     }
 }
 

@@ -1,6 +1,7 @@
 use std::error::Error;
-use std::fmt;
+use std::fmt::{self, Formatter};
 use std::io::{BufReader, Read};
+use std::rc::Weak;
 
 use crate::{chunk_type, ChunkType};
 use crc32fast::Hasher;
@@ -132,7 +133,19 @@ impl TryFrom<&[u8]> for Chunk {
     }
 }
 
+impl fmt::Display for Chunk {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "Chunk {{ ")?;
+        writeln!(f)?;
+        write!(f, "\tLength: {}\n", self.length)?;
+        write!(f, "\tChunk Type: {} \n", self.chunk_type)?;
+        write!(f, "\tChunk Data: {} \n", self.chunk_data.len())?;
+        writeln!(f, "\tCRC: {}", self.crc)?;
+        writeln!(f, "}}")?;
 
+        Ok(())
+    }
+}
 
 #[allow(unused_variables)]
 #[cfg(test)]
