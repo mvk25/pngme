@@ -1,9 +1,7 @@
 use std::error::Error;
 use std::fmt::{self, Formatter};
 use std::io::{BufReader, Read};
-use std::rc::Weak;
-
-use crate::{chunk_type, ChunkType};
+use crate::chunk_type::ChunkType;
 use crc32fast::Hasher;
 
 #[derive(Debug)]

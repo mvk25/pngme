@@ -1,5 +1,8 @@
-use crate::{Chunk, ChunkType};
+use crate::chunk::Chunk;
+use crate::chunk_type::ChunkType;
 use std::fmt;
+use std::fs;
+use std::path::Path;
 use std::io::{BufReader, Read};
 use std::str::FromStr;
 
@@ -34,6 +37,11 @@ impl Png {
         }
     }
 
+    pub fn from_file<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
+        let bytes = fs::read(path)?;
+        Ok(Self::try_from(bytes.as_ref())?)
+    }
+
     pub fn append_chunk(&mut self, chunk: Chunk) {
         self.chunks.push(chunk);
     }
@@ -45,6 +53,22 @@ impl Png {
         }
 
         Err(PngError::ChunkNotFound(chunk_type.to_string()))
+    }
+
+    pub fn remove_chunk(&mut self, chunk_type: &str) -> anyhow::Result<Chunk> {
+        let chunk_type = ChunkType::from_str(chunk_type).unwrap();
+        let mut target_index: Option<usize> = None;
+        for (index, chunk) in self.chunks.iter().enumerate() {
+            if chunk.chunk_type() == &chunk_type {
+                target_index = Some(index);
+                break;
+            }
+        }
+
+        match target_index {
+            Some(index) => Ok(self.chunks.remove(index)),
+            None => anyhow::bail!("Chunk not found"),
+        }
     }
 
     pub fn header(&self) -> &[u8] {
