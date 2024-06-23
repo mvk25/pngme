@@ -1,28 +1,32 @@
 use crate::{Chunk, ChunkType};
 use std::fmt;
+use std::io::{BufReader, Read};
 use std::str::FromStr;
 
 #[derive(Debug)]
 pub enum PngError {
     ChunkNotFound(String),
+    HeaderNotFound(String),
 }
 impl fmt::Display for PngError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             PngError::ChunkNotFound(chunk_type) => write!(f, "Chunk with type '{}' does not exist", chunk_type),
+            PngError::HeaderNotFound(header_error) => write!(f, "{}", header_error),
         }
     }
 }
 
 impl std::error::Error for PngError {}
 
+#[derive(Debug)]
 pub struct Png {
     signature: [u8; 8],
     chunks: Vec<Chunk>,
 }
 
 impl Png {
-    const STANDARD_HEADER: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
+    pub const STANDARD_HEADER: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
     pub fn from_chunks(chunks: Vec<Chunk>) -> Png {
         Png {
             signature: Self::STANDARD_HEADER,
@@ -61,9 +65,36 @@ impl Png {
 }
 
 impl TryFrom<&[u8]> for Png {
-    type Error = String;
+    type Error = PngError;
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        todo!()
+            let mut reader = BufReader::new(value);
+            let mut header: [u8; 8] = [0; 8];
+            let mut chunks = Vec::new();
+
+            reader.read_exact(&mut header).unwrap();
+
+            if header != Png::STANDARD_HEADER {
+                return Err(PngError::HeaderNotFound(format!("Mismatched header(not found")));
+            }
+
+            let mut length_buffer: [u8; 4] = [0; 4];
+            while let Ok(()) = reader.read_exact(&mut length_buffer) {
+                let length = u32::from_be_bytes(length_buffer);
+
+                let chunk_length = (length + 8) as usize;
+
+                let mut chunk_data: Vec<u8> = vec![0; chunk_length];
+                reader.read_exact(&mut chunk_data).unwrap();
+
+                let chunk_bytes: Vec<u8> = length_buffer
+                                        .iter()
+                                        .copied()
+                                        .chain(chunk_data.into_iter())
+                                        .collect();
+                let chunk = Chunk::try_from(chunk_bytes.as_ref()).unwrap();
+                chunks.push(chunk);
+            }
+            Ok(Png { signature: header, chunks })
     }
 }
 
